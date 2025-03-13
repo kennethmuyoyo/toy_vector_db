@@ -10,7 +10,6 @@ This project implements a vector database from scratch in Go, providing:
 - Fast nearest-neighbor search using advanced indexing techniques
 - Support for multiple distance metrics (Euclidean, Cosine, Dot Product, Manhattan)
 - SQL-like query interface for familiar database interaction
-- REST API for integration with other applications
 - Command-line interface for database management
 
 ## Project Structure
@@ -31,7 +30,7 @@ This project implements a vector database from scratch in Go, providing:
 │   │   ├── planner/   # Query planner
 │   │   ├── executor/  # Query executor
 │   │   └── cli/       # CLI integration
-│   └── api/           # API interfaces
+│   └── api/           # API interfaces (planned)
 ├── internal/          # Private packages
 │   ├── config/        # Configuration
 │   └── util/          # Utilities
@@ -61,7 +60,10 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ Support for vector-specific operations (NEAREST TO clause)
 
 ### Next Steps
+- Implement REST API for integration with other applications
 - Create web interface for visualization and management
+- Performance Testing
+- Implement additional index types
 
 ## Getting Started
 
