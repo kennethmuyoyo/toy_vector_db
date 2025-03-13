@@ -23,7 +23,8 @@ This project implements a vector database from scratch in Go, providing:
 │   │   └── distance/  # Distance functions
 │   ├── storage/       # Storage layer
 │   ├── index/         # Indexing implementations
-│   │   └── flat/      # Flat (brute force) index
+│   │   ├── flat/      # Flat (brute force) index
+│   │   └── hnsw/      # Hierarchical Navigable Small World index
 │   └── api/           # API interfaces
 ├── internal/          # Private packages
 │   ├── config/        # Configuration
@@ -40,16 +41,16 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ Basic file-based storage layer
 - ✅ Command-line interface for basic operations
 
-### Phase 2: Indexing (In Progress)
+### Phase 2: Indexing (Completed)
 - ✅ Flat index implementation (brute force approach)
+- ✅ HNSW (Hierarchical Navigable Small World) index implementation
 - ✅ K-NN search with different metrics
 - ✅ Index persistence
-- ⏳ HNSW (Hierarchical Navigable Small World) index
 
 ### Next Steps
-- Complete HNSW index implementation
 - Add SQL query interface for familiar interaction
-- Optimize for large-scale data
+- Implement distributed architecture
+- Add benchmarking tools and optimization
 
 ## Getting Started
 
@@ -82,12 +83,35 @@ go build -o vectodb ./cmd/vectodb
 # Delete a vector
 ./vectodb delete my-vector
 
-# Search for similar vectors (using Euclidean distance)
-./vectodb search my-vector 5
+# Search for similar vectors with flat index (using Euclidean distance)
+./vectodb search flat my-vector 5
+
+# Search for similar vectors with HNSW index (using Euclidean distance)
+./vectodb search hnsw my-vector 5
 
 # Search with a different distance metric
-./vectodb -metric=cosine search my-vector 5
+./vectodb -metric=cosine search hnsw my-vector 5
 ```
+
+## Index Types
+
+VectoDB currently supports two types of indices:
+
+### Flat Index
+- Brute-force approach that compares the query vector to all vectors in the database
+- Provides exact nearest neighbor results
+- Suitable for small datasets or when exact results are required
+- Time complexity: O(n) where n is the number of vectors
+
+### HNSW Index (Hierarchical Navigable Small World)
+- Graph-based approximate nearest neighbor search algorithm
+- Provides significantly faster search times than flat index, especially for large datasets
+- Tunable parameters to balance between speed and accuracy
+- Time complexity: O(log n) where n is the number of vectors
+- Key parameters:
+  - M: Maximum number of connections per node (default: 16)
+  - efConstruction: Search list size during index construction (default: 200)
+  - efSearch: Search list size during queries (default: 50)
 
 ## Distance Metrics
 

@@ -12,6 +12,8 @@ import (
 	"github.com/ken/vector_database/pkg/core/distance"
 	"github.com/ken/vector_database/pkg/core/vector"
 	"github.com/ken/vector_database/pkg/index/flat"
+	"github.com/ken/vector_database/pkg/index/hnsw"
+	"github.com/ken/vector_database/pkg/index"
 	"github.com/ken/vector_database/pkg/storage"
 )
 
@@ -212,16 +214,27 @@ func main() {
 
 // handleSearch performs a k-nearest neighbor search for a vector
 func handleSearch(args []string, store storage.VectorStore, metric distance.Metric) {
-	if len(args) < 3 {
-		fmt.Println("Error: Missing vector ID and k")
-		fmt.Println("Usage: vectodb search <vector-id> <k>")
+	if len(args) < 4 {
+		fmt.Println("Error: Missing parameters")
+		fmt.Println("Usage: vectodb search <index-type> <vector-id> <k>")
+		fmt.Println("  index-type: The type of index to use (flat, hnsw)")
+		fmt.Println("  vector-id: The ID of the query vector")
+		fmt.Println("  k: The number of nearest neighbors to find")
+		os.Exit(1)
+	}
+	
+	// Get the index type
+	indexType := args[1]
+	if indexType != "flat" && indexType != "hnsw" {
+		fmt.Printf("Error: Unsupported index type: %s\n", indexType)
+		fmt.Println("Supported index types: flat, hnsw")
 		os.Exit(1)
 	}
 	
 	// Parse k (number of nearest neighbors)
-	k, err := strconv.Atoi(args[2])
+	k, err := strconv.Atoi(args[3])
 	if err != nil {
-		fmt.Printf("Error: Invalid value for k: %s\n", args[2])
+		fmt.Printf("Error: Invalid value for k: %s\n", args[3])
 		os.Exit(1)
 	}
 
@@ -231,10 +244,10 @@ func handleSearch(args []string, store storage.VectorStore, metric distance.Metr
 	}
 	
 	// Get the query vector
-	queryVec, err := store.Get(args[1])
+	queryVec, err := store.Get(args[2])
 	if err != nil {
 		if err == storage.ErrVectorNotFound {
-			fmt.Printf("Vector %s not found\n", args[1])
+			fmt.Printf("Vector %s not found\n", args[2])
 		} else {
 			fmt.Printf("Error: %v\n", err)
 		}
@@ -259,15 +272,24 @@ func handleSearch(args []string, store storage.VectorStore, metric distance.Metr
 		vectors = append(vectors, v)
 	}
 	
-	// Create and build the index
-	idx := flat.NewFlatIndex(metric)
+	// Create an appropriate index based on the specified type
+	var idx index.Index
+	switch indexType {
+	case "flat":
+		idx = flat.NewFlatIndex(metric)
+	case "hnsw":
+		// Create an HNSW index with default configuration
+		idx = hnsw.NewHNSWIndex(metric, nil)
+	}
+	
+	// Build the index
 	if err := idx.Build(vectors); err != nil {
 		fmt.Printf("Error building index: %v\n", err)
 		os.Exit(1)
 	}
 	
-	fmt.Printf("Searching for %d nearest neighbors to vector %s using %s metric...\n", 
-		k, queryVec.ID, metric.Name())
+	fmt.Printf("Searching for %d nearest neighbors to vector %s using %s index with %s metric...\n", 
+		k, queryVec.ID, idx.Name(), metric.Name())
 	
 	// Perform the search
 	results, err := idx.Search(queryVec, k)
@@ -297,7 +319,8 @@ func printUsage() {
 	fmt.Println("  serve    Start the VectoDB server")
 	fmt.Println("  import   Import vectors from a file")
 	fmt.Println("  export   Export vectors to a file")
-	fmt.Println("  search   Search for vectors")
+	fmt.Println("  search   Search for vectors (Usage: vectodb search <index-type> <vector-id> <k>)")
+	fmt.Println("           index-type: flat, hnsw")
 	fmt.Println("  add      Add a vector")
 	fmt.Println("  get      Get a vector")
 	fmt.Println("  list     List all vectors")
