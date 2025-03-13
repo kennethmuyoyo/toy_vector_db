@@ -1,0 +1,14 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+storage:
+  data_dir: "./data"
+
+vector:
+  default_dimension: 128
+
+indexing:
+  type: "hnsw"
+  hnsw_max_links: 16
+  hnsw_ef_construct: 200 
