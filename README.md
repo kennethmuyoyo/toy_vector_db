@@ -8,7 +8,7 @@ This project implements a vector database from scratch in Go, providing:
 
 - Efficient vector storage and retrieval
 - Fast nearest-neighbor search using advanced indexing techniques
-- Support for multiple distance metrics (Euclidean, Cosine, Dot Product)
+- Support for multiple distance metrics (Euclidean, Cosine, Dot Product, Manhattan)
 - REST API for integration with other applications
 - Command-line interface for database management
 
@@ -23,6 +23,7 @@ This project implements a vector database from scratch in Go, providing:
 │   │   └── distance/  # Distance functions
 │   ├── storage/       # Storage layer
 │   ├── index/         # Indexing implementations
+│   │   └── flat/      # Flat (brute force) index
 │   └── api/           # API interfaces
 ├── internal/          # Private packages
 │   ├── config/        # Configuration
@@ -39,17 +40,16 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ Basic file-based storage layer
 - ✅ Command-line interface for basic operations
 
+### Phase 2: Indexing (In Progress)
+- ✅ Flat index implementation (brute force approach)
+- ✅ K-NN search with different metrics
+- ✅ Index persistence
+- ⏳ HNSW (Hierarchical Navigable Small World) index
+
 ### Next Steps
-
-#### Phase 2: Indexing
-- Flat index implementation
-- HNSW (Hierarchical Navigable Small World) index
-- Index persistence
-
-#### Phase 3: Query Engine
-- k-NN search with different metrics
-- Metadata management
-- Transaction support
+- Complete HNSW index implementation
+- Add SQL query interface for familiar interaction
+- Optimize for large-scale data
 
 ## Getting Started
 
@@ -81,7 +81,22 @@ go build -o vectodb ./cmd/vectodb
 
 # Delete a vector
 ./vectodb delete my-vector
+
+# Search for similar vectors (using Euclidean distance)
+./vectodb search my-vector 5
+
+# Search with a different distance metric
+./vectodb -metric=cosine search my-vector 5
 ```
+
+## Distance Metrics
+
+VectoDB supports the following distance metrics:
+
+- **euclidean**: Euclidean distance (L2 norm)
+- **cosine**: Cosine distance (1 - cosine similarity)
+- **dotproduct**: Dot product distance (negative dot product)
+- **manhattan**: Manhattan distance (L1 norm)
 
 ## License
 

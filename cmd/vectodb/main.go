@@ -9,7 +9,9 @@ import (
 	"strings"
 
 	"github.com/ken/vector_database/internal/config"
+	"github.com/ken/vector_database/pkg/core/distance"
 	"github.com/ken/vector_database/pkg/core/vector"
+	"github.com/ken/vector_database/pkg/index/flat"
 	"github.com/ken/vector_database/pkg/storage"
 )
 
@@ -23,6 +25,7 @@ func main() {
 	var (
 		showVersion = flag.Bool("version", false, "Display version information")
 		configFile  = flag.String("config", "config.yaml", "Path to configuration file")
+		metricName  = flag.String("metric", "euclidean", "Distance metric to use (euclidean, cosine, dotproduct, manhattan)")
 	)
 
 	// Parse command-line arguments
@@ -43,6 +46,13 @@ func main() {
 	// Create data directory if it doesn't exist
 	if err := os.MkdirAll(cfg.Storage.DataDir, 0755); err != nil {
 		log.Fatalf("Failed to create data directory: %v", err)
+	}
+
+	// Parse the metric type
+	metricType := distance.MetricType(*metricName)
+	metric, err := distance.GetMetric(metricType)
+	if err != nil {
+		log.Fatalf("Invalid distance metric: %v", err)
 	}
 
 	// Create vector store
@@ -81,21 +91,7 @@ func main() {
 		fmt.Printf("Exporting vectors to %s...\n", args[1])
 		// TODO: Implement vector export
 	case "search":
-		if len(args) < 3 {
-			fmt.Println("Error: Missing vector ID and k")
-			fmt.Println("Usage: vectodb search <vector-id> <k>")
-			os.Exit(1)
-		}
-		
-		// Parse k (number of nearest neighbors)
-		k, err := strconv.Atoi(args[2])
-		if err != nil {
-			fmt.Printf("Error: Invalid value for k: %s\n", args[2])
-			os.Exit(1)
-		}
-		
-		fmt.Printf("Searching for %d nearest neighbors to vector %s...\n", k, args[1])
-		// TODO: Implement vector search
+		handleSearch(args, store, metric)
 	case "add":
 		if len(args) < 3 {
 			fmt.Println("Error: Missing vector ID and values")
@@ -211,6 +207,83 @@ func main() {
 		fmt.Printf("Unknown command: %s\n", args[0])
 		printUsage()
 		os.Exit(1)
+	}
+}
+
+// handleSearch performs a k-nearest neighbor search for a vector
+func handleSearch(args []string, store storage.VectorStore, metric distance.Metric) {
+	if len(args) < 3 {
+		fmt.Println("Error: Missing vector ID and k")
+		fmt.Println("Usage: vectodb search <vector-id> <k>")
+		os.Exit(1)
+	}
+	
+	// Parse k (number of nearest neighbors)
+	k, err := strconv.Atoi(args[2])
+	if err != nil {
+		fmt.Printf("Error: Invalid value for k: %s\n", args[2])
+		os.Exit(1)
+	}
+
+	if k < 1 {
+		fmt.Println("Error: k must be greater than 0")
+		os.Exit(1)
+	}
+	
+	// Get the query vector
+	queryVec, err := store.Get(args[1])
+	if err != nil {
+		if err == storage.ErrVectorNotFound {
+			fmt.Printf("Vector %s not found\n", args[1])
+		} else {
+			fmt.Printf("Error: %v\n", err)
+		}
+		os.Exit(1)
+	}
+	
+	// List all vectors
+	ids, err := store.List()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Get all vectors
+	vectors := make([]*vector.Vector, 0, len(ids))
+	for _, id := range ids {
+		v, err := store.Get(id)
+		if err != nil {
+			fmt.Printf("Error getting vector %s: %v\n", id, err)
+			continue
+		}
+		vectors = append(vectors, v)
+	}
+	
+	// Create and build the index
+	idx := flat.NewFlatIndex(metric)
+	if err := idx.Build(vectors); err != nil {
+		fmt.Printf("Error building index: %v\n", err)
+		os.Exit(1)
+	}
+	
+	fmt.Printf("Searching for %d nearest neighbors to vector %s using %s metric...\n", 
+		k, queryVec.ID, metric.Name())
+	
+	// Perform the search
+	results, err := idx.Search(queryVec, k)
+	if err != nil {
+		fmt.Printf("Error during search: %v\n", err)
+		os.Exit(1)
+	}
+	
+	// Display results
+	fmt.Printf("Found %d results:\n", len(results))
+	for i, result := range results {
+		// Skip the query vector itself
+		if result.ID == queryVec.ID {
+			continue
+		}
+		fmt.Printf("%d. %s (distance: %.6f)\n", i+1, result.ID, result.Distance)
 	}
 }
 
