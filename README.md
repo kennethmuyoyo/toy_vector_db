@@ -1,6 +1,6 @@
 # VectoDB - Vector Database in Go
 
-VectoDB is a high-performance vector database implemented in Go, designed for efficient similarity search and vector operations.
+Toy VectoDB is a vector database implemented in Go, designed for efficient similarity search and vector operations.
 
 ## Overview
 
@@ -9,6 +9,7 @@ This project implements a vector database from scratch in Go, providing:
 - Efficient vector storage and retrieval
 - Fast nearest-neighbor search using advanced indexing techniques
 - Support for multiple distance metrics (Euclidean, Cosine, Dot Product, Manhattan)
+- SQL-like query interface for familiar database interaction
 - REST API for integration with other applications
 - Command-line interface for database management
 
@@ -25,6 +26,11 @@ This project implements a vector database from scratch in Go, providing:
 │   ├── index/         # Indexing implementations
 │   │   ├── flat/      # Flat (brute force) index
 │   │   └── hnsw/      # Hierarchical Navigable Small World index
+│   ├── sql/           # SQL interface
+│   │   ├── parser/    # SQL parser
+│   │   ├── planner/   # Query planner
+│   │   ├── executor/  # Query executor
+│   │   └── cli/       # CLI integration
 │   └── api/           # API interfaces
 ├── internal/          # Private packages
 │   ├── config/        # Configuration
@@ -47,10 +53,15 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ K-NN search with different metrics
 - ✅ Index persistence
 
+### Phase 3: SQL Interface (Completed)
+- ✅ SQL-like query language parser
+- ✅ Query planning and optimization
+- ✅ Query execution engine
+- ✅ Integration with CLI
+- ✅ Support for vector-specific operations (NEAREST TO clause)
+
 ### Next Steps
-- Add SQL query interface for familiar interaction
-- Implement distributed architecture
-- Add benchmarking tools and optimization
+- Create web interface for visualization and management
 
 ## Getting Started
 
@@ -58,7 +69,7 @@ This project implements a vector database from scratch in Go, providing:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/vectodb.git
+git clone https://github.com/kennethmuyoyo/toy_vector_db.git
 cd vectodb
 
 # Build the project
@@ -66,6 +77,8 @@ go build -o vectodb ./cmd/vectodb
 ```
 
 ### Usage
+
+#### Basic Vector Operations
 
 ```bash
 # Create a random vector
@@ -82,7 +95,11 @@ go build -o vectodb ./cmd/vectodb
 
 # Delete a vector
 ./vectodb delete my-vector
+```
 
+#### Search Operations
+
+```bash
 # Search for similar vectors with flat index (using Euclidean distance)
 ./vectodb search flat my-vector 5
 
@@ -91,6 +108,42 @@ go build -o vectodb ./cmd/vectodb
 
 # Search with a different distance metric
 ./vectodb -metric=cosine search hnsw my-vector 5
+```
+
+#### SQL Interface
+
+VectoDB now supports an SQL-like query language that allows familiar database interactions:
+
+```bash
+# List all vectors
+./vectodb sql "SELECT id, dimension FROM vectors"
+
+# Get a specific vector by ID
+./vectodb sql "SELECT id, vector FROM vectors WHERE id = 'my-vector'"
+
+# Find vectors similar to a specified vector (vector search)
+./vectodb sql "SELECT id, distance FROM vectors NEAREST TO [1.0,2.0,3.0] LIMIT 5"
+
+# Change the distance metric for similarity search
+./vectodb sql "SELECT id, distance FROM vectors NEAREST TO [1.0,2.0,3.0] USING cosine LIMIT 5"
+
+# Add a new vector
+./vectodb sql "INSERT INTO vectors (id, vector) VALUES ('vec123', [1.0,2.0,3.0,4.0,5.0])"
+
+# Delete a vector
+./vectodb sql "DELETE FROM vectors WHERE id = 'vec123'"
+
+# Count vectors
+./vectodb sql "SELECT COUNT(*) FROM vectors"
+```
+
+Options:
+```bash
+# Enable verbose output (shows query plan and execution time)
+./vectodb -verbose sql "SELECT id FROM vectors LIMIT 5"
+
+# Switch between index types
+./vectodb -index=hnsw sql "SELECT id, distance FROM vectors NEAREST TO [1.0,2.0,3.0] LIMIT 5"
 ```
 
 ## Index Types
@@ -121,6 +174,55 @@ VectoDB supports the following distance metrics:
 - **cosine**: Cosine distance (1 - cosine similarity)
 - **dotproduct**: Dot product distance (negative dot product)
 - **manhattan**: Manhattan distance (L1 norm)
+
+## SQL Query Language
+
+VectoDB implements a SQL-like query language with extensions for vector operations:
+
+### Supported SQL Commands
+
+- **SELECT**: Retrieve vectors and their properties
+  ```sql
+  SELECT id, dimension FROM vectors [WHERE condition] [LIMIT n]
+  ```
+
+- **SELECT with NEAREST TO**: Perform similarity search
+  ```sql
+  SELECT id, distance FROM vectors NEAREST TO [vector] [USING metric] [LIMIT n]
+  ```
+
+- **INSERT**: Add a new vector
+  ```sql
+  INSERT INTO vectors (id, vector) VALUES ('id', [values])
+  ```
+
+- **DELETE**: Remove vectors
+  ```sql
+  DELETE FROM vectors WHERE condition
+  ```
+
+- **CREATE/DROP**: Create or drop collections
+  ```sql
+  CREATE COLLECTION vectors
+  DROP COLLECTION vectors
+  ```
+
+### Special SQL Features
+
+- **Vector Literals**: Vector data can be specified using square brackets
+  ```sql
+  [1.0, 2.0, 3.0, 4.0]
+  ```
+
+- **NEAREST TO Clause**: Extension for similarity search
+  ```sql
+  NEAREST TO [1.0, 2.0, 3.0]
+  ```
+
+- **USING Clause**: Specify distance metric
+  ```sql
+  USING euclidean|cosine|dotproduct|manhattan
+  ```
 
 ## License
 

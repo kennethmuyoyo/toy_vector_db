@@ -14,6 +14,8 @@ import (
 	"github.com/ken/vector_database/pkg/index/flat"
 	"github.com/ken/vector_database/pkg/index/hnsw"
 	"github.com/ken/vector_database/pkg/index"
+	"github.com/ken/vector_database/pkg/sql/cli"
+	"github.com/ken/vector_database/pkg/sql/executor"
 	"github.com/ken/vector_database/pkg/storage"
 )
 
@@ -28,6 +30,8 @@ func main() {
 		showVersion = flag.Bool("version", false, "Display version information")
 		configFile  = flag.String("config", "config.yaml", "Path to configuration file")
 		metricName  = flag.String("metric", "euclidean", "Distance metric to use (euclidean, cosine, dotproduct, manhattan)")
+		verbose     = flag.Bool("verbose", false, "Enable verbose output")
+		indexType   = flag.String("index", "flat", "Index type to use (flat, hnsw)")
 	)
 
 	// Parse command-line arguments
@@ -205,11 +209,54 @@ func main() {
 		}
 		
 		fmt.Printf("Created random vector %s with dimension %d\n", v.ID, v.Dimension)
+	case "sql":
+		handleSQL(args, store, metric, *indexType, *verbose)
 	default:
 		fmt.Printf("Unknown command: %s\n", args[0])
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+// handleSQL executes SQL queries against the vector database
+func handleSQL(args []string, store storage.VectorStore, metric distance.Metric, indexType string, verbose bool) {
+	if len(args) < 2 {
+		fmt.Println("Error: Missing SQL query")
+		fmt.Println("Usage: vectodb sql \"<query>\"")
+		fmt.Println("Examples:")
+		fmt.Println("  vectodb sql \"SELECT id, dimension FROM vectors LIMIT 5\"")
+		fmt.Println("  vectodb sql \"SELECT id, distance FROM vectors NEAREST TO [1.0,2.0,3.0] USING euclidean LIMIT 3\"")
+		fmt.Println("  vectodb sql \"INSERT INTO vectors (id, vector) VALUES ('vec123', [1.0,2.0,3.0])\"")
+		fmt.Println("  vectodb sql \"DELETE FROM vectors WHERE id = 'vec123'\"")
+		os.Exit(1)
+	}
+	
+	// Convert index type string to executor.IndexType
+	var idxType executor.IndexType
+	switch strings.ToLower(indexType) {
+	case "flat":
+		idxType = executor.IndexTypeFlat
+	case "hnsw":
+		idxType = executor.IndexTypeHNSW
+	default:
+		fmt.Printf("Error: Unsupported index type: %s\n", indexType)
+		fmt.Println("Supported index types: flat, hnsw")
+		os.Exit(1)
+	}
+	
+	// Create SQL service
+	sqlService := cli.NewSQLService(store, idxType, metric)
+	sqlService.SetVerbose(verbose)
+	
+	// Execute SQL query
+	result, err := sqlService.Execute(args[1])
+	if err != nil {
+		fmt.Printf("SQL Error: %v\n", err)
+		os.Exit(1)
+	}
+	
+	// Print result
+	fmt.Println(result)
 }
 
 // handleSearch performs a k-nearest neighbor search for a vector
@@ -321,6 +368,7 @@ func printUsage() {
 	fmt.Println("  export   Export vectors to a file")
 	fmt.Println("  search   Search for vectors (Usage: vectodb search <index-type> <vector-id> <k>)")
 	fmt.Println("           index-type: flat, hnsw")
+	fmt.Println("  sql      Execute SQL query (Usage: vectodb sql \"<query>\")")
 	fmt.Println("  add      Add a vector")
 	fmt.Println("  get      Get a vector")
 	fmt.Println("  list     List all vectors")
