@@ -284,4 +284,9 @@ func (s *FileStore) saveVector(v *vector.Vector) error {
 	}
 	
 	return nil
+}
+
+// BaseDir returns the base directory of the file store
+func (s *FileStore) BaseDir() string {
+	return s.baseDir
 } 

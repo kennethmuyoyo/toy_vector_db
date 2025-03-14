@@ -30,6 +30,9 @@ This project implements a vector database from scratch in Go, providing:
 │   │   ├── planner/   # Query planner
 │   │   ├── executor/  # Query executor
 │   │   └── cli/       # CLI integration
+│   ├── embedding/     # Embedding engine (planned)
+│   │   ├── models/    # Embedding models integration
+│   │   └── pipeline/  # Processing pipelines for different content types
 │   └── api/           # API interfaces (planned)
 ├── internal/          # Private packages
 │   ├── config/        # Configuration
@@ -60,6 +63,8 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ Support for vector-specific operations (NEAREST TO clause)
 
 ### Next Steps
+- Implement embedding engine for automatic vector generation from raw content
+- Support for storing and retrieving both original content and vector embeddings
 - Implement REST API for integration with other applications
 - Create web interface for visualization and management
 - Performance Testing
@@ -225,6 +230,45 @@ VectoDB implements a SQL-like query language with extensions for vector operatio
   ```sql
   USING euclidean|cosine|dotproduct|manhattan
   ```
+
+## Planned Embedding Engine
+
+The planned embedding engine will allow users to work with raw content instead of manually creating vectors. This will make VectoDB more practical for real-world applications.
+
+### Key Features (Planned)
+
+- **Content Type Support**: Process text, JSON, and eventually images, audio, etc.
+- **Embedded Model Integration**: Support for various embedding models
+- **Pipeline Architecture**: Customizable processing pipelines for different content types
+- **Metadata Storage**: Store and query both vector embeddings and associated metadata
+- **Automatic Updates**: Keep embeddings in sync with content changes
+
+### Extended SQL Interface (Planned)
+
+The SQL interface will be extended to support embedding operations:
+
+```sql
+-- Store content with automatic embedding generation
+INSERT INTO documents (id, content, metadata) 
+VALUES ('doc1', 'This is a sample document about vector databases', 
+        '{"author": "John", "category": "databases"}');
+
+-- Search using natural language
+SELECT id, content, distance FROM documents 
+NEAREST TO EMBEDDING('find me information about databases') 
+LIMIT 5;
+
+-- Filter on metadata while performing vector search
+SELECT id, content, metadata, distance FROM documents 
+NEAREST TO EMBEDDING('machine learning concepts') 
+WHERE metadata->>'category' = 'technology'
+LIMIT 10;
+
+-- Specify embedding model to use
+SELECT id, content, distance FROM documents 
+NEAREST TO EMBEDDING('quantum computing', MODEL='openai/text-embedding-3-small') 
+LIMIT 5;
+```
 
 ## License
 

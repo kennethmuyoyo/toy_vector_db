@@ -211,6 +211,26 @@ func main() {
 		fmt.Printf("Created random vector %s with dimension %d\n", v.ID, v.Dimension)
 	case "sql":
 		handleSQL(args, store, metric, *indexType, *verbose)
+	case "embed":
+		if len(args) < 2 {
+			fmt.Println("Error: Missing embed type")
+			fmt.Println("Usage: vectodb embed [text|file|json] <id> <content>")
+			os.Exit(1)
+		}
+		
+		// Pass the remaining arguments to the embed command handler
+		if err := HandleEmbedCommand(args[1:]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	case "search-text":
+		if len(args) < 1 {
+			fmt.Println("Error: Missing text query")
+			fmt.Println("Usage: vectodb search-text <text query>")
+			os.Exit(1)
+		}
+		textQuery := strings.Join(args, " ")
+		HandleSearchTextCommand(textQuery, metric, *indexType, *verbose)
 	default:
 		fmt.Printf("Unknown command: %s\n", args[0])
 		printUsage()
@@ -374,4 +394,6 @@ func printUsage() {
 	fmt.Println("  list     List all vectors")
 	fmt.Println("  delete   Delete a vector")
 	fmt.Println("  random   Create a random vector")
+	fmt.Println("  embed    Embed text or file content as a vector")
+	fmt.Println("  search-text <text query>  Search using text similarity")
 } 
