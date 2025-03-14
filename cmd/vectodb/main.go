@@ -150,6 +150,19 @@ func main() {
 		
 		// Print vector
 		fmt.Printf("Vector %s (dimension: %d):\n", v.ID, v.Dimension)
+		
+		// Print metadata if available
+		if len(v.Metadata) > 0 {
+			fmt.Println("Metadata:")
+			for key, value := range v.Metadata {
+				fmt.Printf("  %s: %s\n", key, value)
+			}
+			fmt.Println("Values:")
+		} else {
+			fmt.Println("Values:")
+		}
+		
+		// Print vector values
 		for i, val := range v.Values {
 			fmt.Printf("  [%d]: %f\n", i, val)
 		}
@@ -231,6 +244,42 @@ func main() {
 		}
 		textQuery := strings.Join(args, " ")
 		HandleSearchTextCommand(textQuery, metric, *indexType, *verbose)
+	case "set-metadata":
+		if len(args) < 4 {
+			fmt.Println("Error: Missing parameters")
+			fmt.Println("Usage: vectodb set-metadata <vector-id> <key> <value>")
+			os.Exit(1)
+		}
+		
+		// Get vector from store
+		v, err := store.Get(args[1])
+		if err != nil {
+			if err == storage.ErrVectorNotFound {
+				fmt.Printf("Vector %s not found\n", args[1])
+			} else {
+				fmt.Printf("Error: %v\n", err)
+			}
+			os.Exit(1)
+		}
+		
+		// Set metadata
+		key := args[2]
+		value := args[3]
+		
+		// Initialize metadata map if nil
+		if v.Metadata == nil {
+			v.Metadata = make(map[string]string)
+		}
+		
+		v.Metadata[key] = value
+		
+		// Update vector in store
+		if err := store.Update(v); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		
+		fmt.Printf("Set metadata %s=%s for vector %s\n", key, value, v.ID)
 	default:
 		fmt.Printf("Unknown command: %s\n", args[0])
 		printUsage()
@@ -245,6 +294,9 @@ func handleSQL(args []string, store storage.VectorStore, metric distance.Metric,
 		fmt.Println("Usage: vectodb sql \"<query>\"")
 		fmt.Println("Examples:")
 		fmt.Println("  vectodb sql \"SELECT id, dimension FROM vectors LIMIT 5\"")
+		fmt.Println("  vectodb sql \"SELECT id, dimension FROM vectors WHERE id LIKE 'test%'\"")
+		fmt.Println("  vectodb sql \"SELECT id FROM vectors WHERE metadata.category = 'image'\"")
+		fmt.Println("  vectodb sql \"SELECT id FROM vectors WHERE metadata.tags LIKE '%important%'\"")
 		fmt.Println("  vectodb sql \"SELECT id, distance FROM vectors NEAREST TO [1.0,2.0,3.0] USING euclidean LIMIT 3\"")
 		fmt.Println("  vectodb sql \"INSERT INTO vectors (id, vector) VALUES ('vec123', [1.0,2.0,3.0])\"")
 		fmt.Println("  vectodb sql \"DELETE FROM vectors WHERE id = 'vec123'\"")
@@ -396,4 +448,5 @@ func printUsage() {
 	fmt.Println("  random   Create a random vector")
 	fmt.Println("  embed    Embed text or file content as a vector")
 	fmt.Println("  search-text <text query>  Search using text similarity")
+	fmt.Println("  set-metadata <vector-id> <key> <value>  Set vector metadata")
 } 

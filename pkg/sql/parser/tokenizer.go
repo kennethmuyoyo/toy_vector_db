@@ -38,7 +38,7 @@ var Keywords = map[string]bool{
 	"TRUE": true, "FALSE": true, "COUNT": true, "NEAREST": true, "TO": true, "LIMIT": true,
 	"USING": true, "METRIC": true, "JOIN": true, "ON": true, "AS": true, "ORDER": true, "BY": true,
 	"ASC": true, "DESC": true, "GROUP": true, "HAVING": true, "DISTINCT": true, "UNION": true,
-	"ALL": true, "IN": true, "EXISTS": true,
+	"ALL": true, "IN": true, "EXISTS": true, "LIKE": true,
 }
 
 // Tokenizer breaks input into tokens

@@ -730,6 +730,18 @@ func (p *Parser) parseComparison() (*Node, error) {
 		left = &Node{Type: NodeBinaryOp, Value: op.Value, Children: []*Node{left, right}}
 	}
 	
+	// Add support for the LIKE operator
+	if p.check(TokenKeyword) && strings.ToUpper(p.peek().Value) == "LIKE" {
+		p.advance() // Consume the LIKE keyword
+		
+		right, err := p.parseTerm()
+		if err != nil {
+			return nil, err
+		}
+		
+		left = &Node{Type: NodeBinaryOp, Value: "LIKE", Children: []*Node{left, right}}
+	}
+	
 	return left, nil
 }
 

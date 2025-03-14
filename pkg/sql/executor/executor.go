@@ -3,6 +3,7 @@ package executor
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -688,6 +689,15 @@ func (qe *QueryExecutor) evaluateWhereCondition(condNode *parser.Node, vec *vect
 					literalValue := strings.Trim(condNode.Children[1].Value, "'\"")
 					return vec.ID == literalValue, nil
 				}
+			} else if condNode.Children[0].Type == parser.NodeIdentifier && strings.HasPrefix(strings.ToLower(condNode.Children[0].Value), "metadata.") {
+				// Handle metadata field comparison
+				metadataKey := strings.TrimPrefix(condNode.Children[0].Value, "metadata.")
+				if condNode.Children[1].Type == parser.NodeLiteral {
+					// Compare metadata value - remove quotes from string literals
+					literalValue := strings.Trim(condNode.Children[1].Value, "'\"")
+					actualValue, exists := vec.Metadata[metadataKey]
+					return exists && actualValue == literalValue, nil
+				}
 			}
 			
 		case "!=", "<>":
@@ -697,7 +707,56 @@ func (qe *QueryExecutor) evaluateWhereCondition(condNode *parser.Node, vec *vect
 					literalValue := strings.Trim(condNode.Children[1].Value, "'\"")
 					return vec.ID != literalValue, nil
 				}
+			} else if condNode.Children[0].Type == parser.NodeIdentifier && strings.HasPrefix(strings.ToLower(condNode.Children[0].Value), "metadata.") {
+				// Handle metadata field comparison
+				metadataKey := strings.TrimPrefix(condNode.Children[0].Value, "metadata.")
+				if condNode.Children[1].Type == parser.NodeLiteral {
+					// Compare metadata value - remove quotes from string literals
+					literalValue := strings.Trim(condNode.Children[1].Value, "'\"")
+					actualValue, exists := vec.Metadata[metadataKey]
+					return !exists || actualValue != literalValue, nil
+				}
 			}
+		
+		case "LIKE":
+			// Support LIKE operator for pattern matching on vector IDs
+			if condNode.Children[0].Type == parser.NodeIdentifier && strings.ToLower(condNode.Children[0].Value) == "id" {
+				if condNode.Children[1].Type == parser.NodeLiteral {
+					// Get the pattern value (remove quotes)
+					pattern := strings.Trim(condNode.Children[1].Value, "'\"")
+					
+					// Convert SQL LIKE pattern to Go regex pattern
+					regexPattern := convertLikeToRegex(pattern)
+					
+					// Compile and match the regex
+					regex, err := regexp.Compile(regexPattern)
+					if err != nil {
+						return false, fmt.Errorf("invalid LIKE pattern: %w", err)
+					}
+					
+					return regex.MatchString(vec.ID), nil
+				}
+			} else if condNode.Children[0].Type == parser.NodeIdentifier && strings.HasPrefix(strings.ToLower(condNode.Children[0].Value), "metadata.") {
+				// Handle metadata field LIKE comparison
+				metadataKey := strings.TrimPrefix(condNode.Children[0].Value, "metadata.")
+				if condNode.Children[1].Type == parser.NodeLiteral {
+					// Get the pattern value (remove quotes)
+					pattern := strings.Trim(condNode.Children[1].Value, "'\"")
+					
+					// Convert SQL LIKE pattern to Go regex pattern
+					regexPattern := convertLikeToRegex(pattern)
+					
+					// Compile and match the regex
+					regex, err := regexp.Compile(regexPattern)
+					if err != nil {
+						return false, fmt.Errorf("invalid LIKE pattern: %w", err)
+					}
+					
+					actualValue, exists := vec.Metadata[metadataKey]
+					return exists && regex.MatchString(actualValue), nil
+				}
+			}
+			return false, fmt.Errorf("LIKE operator currently only supports ID and metadata columns")
 		}
 		
 		return false, fmt.Errorf("unsupported operator: %s", condNode.Value)
@@ -705,4 +764,20 @@ func (qe *QueryExecutor) evaluateWhereCondition(condNode *parser.Node, vec *vect
 	default:
 		return false, fmt.Errorf("unsupported node type in WHERE clause: %v", condNode.Type)
 	}
+}
+
+// convertLikeToRegex converts a SQL LIKE pattern to a Go regex pattern
+func convertLikeToRegex(pattern string) string {
+	// Escape special regex characters
+	pattern = regexp.QuoteMeta(pattern)
+	
+	// Replace SQL LIKE wildcards with regex wildcards
+	// % matches any sequence of characters (including none)
+	pattern = strings.ReplaceAll(pattern, "%", ".*")
+	
+	// _ matches any single character
+	pattern = strings.ReplaceAll(pattern, "_", ".")
+	
+	// Add start and end anchors to match the whole string
+	return "^" + pattern + "$"
 } 
