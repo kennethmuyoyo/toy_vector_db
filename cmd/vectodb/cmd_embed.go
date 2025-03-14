@@ -78,14 +78,20 @@ func HandleEmbedCommand(args []string) error {
 		return fmt.Errorf("failed to process document: %w", err)
 	}
 
+	// Make sure we're using the specified ID, not any potential content-as-ID
+	if doc.ID != id {
+		fmt.Printf("Warning: Document ID (%s) was different from specified ID (%s). Using specified ID.\n", doc.ID, id)
+		doc.ID = id
+	}
+
 	// Store the document and its vector
 	store, err := storage.NewFileStore("data")
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Store as a vector
-	v := vector.NewVector(doc.ID, doc.Vector)
+	// Store as a vector - explicitly use the specified ID
+	v := vector.NewVector(id, doc.Vector)
 	if err := store.Insert(v); err != nil {
 		return fmt.Errorf("failed to store vector: %w", err)
 	}
@@ -98,14 +104,14 @@ func HandleEmbedCommand(args []string) error {
 
 	// Get the data directory from the store
 	dataDir := filepath.Dir(store.BaseDir())
-	metadataPath := filepath.Join(dataDir, "docs", doc.ID+".json")
+	metadataPath := filepath.Join(dataDir, "docs", id+".json")
 	os.MkdirAll(filepath.Join(dataDir, "docs"), 0755)
 	
 	if err := ioutil.WriteFile(metadataPath, []byte(docJson), 0644); err != nil {
 		return fmt.Errorf("failed to write document metadata: %w", err)
 	}
 
-	fmt.Printf("Document '%s' embedded and stored successfully.\n", doc.ID)
+	fmt.Printf("Document '%s' embedded and stored successfully.\n", id)
 	fmt.Printf("Vector dimension: %d\n", len(doc.Vector))
 	fmt.Printf("Content type: %s\n", doc.ContentType)
 	fmt.Printf("Metadata stored at: %s\n", metadataPath)

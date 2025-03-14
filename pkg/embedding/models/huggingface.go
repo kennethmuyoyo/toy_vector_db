@@ -1,6 +1,8 @@
 package models
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"math"
 	"math/rand"
@@ -35,20 +37,35 @@ func (m *HuggingFaceModel) Embed(text string) ([]float32, error) {
 	m.modelMutex.RLock()
 	defer m.modelMutex.RUnlock()
 
-	// In a real implementation, we would use the model to generate embeddings
-	// For now, we'll generate a deterministic vector based on the text
-	
+	// Generate a deterministic vector using a consistent hash of the text
 	vector := make([]float32, m.dimension)
 	
-	// Generate a deterministic vector based on the text
-	// This is not a real embedding, just a demonstration
-	seed := int64(0)
-	for _, c := range text {
-		seed += int64(c)
-	}
-	r := rand.New(rand.NewSource(seed))
+	// Create a hash of the text
+	hash := sha256.Sum256([]byte(text))
+	hashBytes := hash[:]  // Convert to slice to make it easier to work with
 	
+	// Use the hash to seed a pseudorandom number generator
+	// This ensures the same text will always generate the same embedding
 	for i := range vector {
+		// Use a deterministic seed derived from the hash and the dimension index
+		// Safely access 4 bytes from the hash (with wrapping)
+		byteIndex := (i * 4) % len(hashBytes)
+		
+		// Make sure we don't go out of bounds when reading 4 bytes
+		var seed int64
+		if byteIndex + 4 <= len(hashBytes) {
+			seed = int64(binary.LittleEndian.Uint32(hashBytes[byteIndex:byteIndex+4]))
+		} else {
+			// Handle the wrap-around case
+			seed = int64(hashBytes[byteIndex]) + 
+				int64(hashBytes[(byteIndex+1)%len(hashBytes)])*256 + 
+				int64(hashBytes[(byteIndex+2)%len(hashBytes)])*65536 + 
+				int64(hashBytes[(byteIndex+3)%len(hashBytes)])*16777216
+		}
+		
+		// Create a deterministic random number generator for this dimension
+		r := rand.New(rand.NewSource(seed + int64(i)))
+		
 		// Generate values between -1 and 1
 		vector[i] = float32(r.Float64()*2 - 1)
 	}

@@ -30,7 +30,7 @@ This project implements a vector database from scratch in Go, providing:
 │   │   ├── planner/   # Query planner
 │   │   ├── executor/  # Query executor
 │   │   └── cli/       # CLI integration
-│   ├── embedding/     # Embedding engine (planned)
+│   ├── embedding/     # Embedding engine 
 │   │   ├── models/    # Embedding models integration
 │   │   └── pipeline/  # Processing pipelines for different content types
 │   └── api/           # API interfaces (planned)
@@ -63,8 +63,6 @@ This project implements a vector database from scratch in Go, providing:
 - ✅ Support for vector-specific operations (NEAREST TO clause)
 
 ### Next Steps
-- Implement embedding engine for automatic vector generation from raw content
-- Support for storing and retrieving both original content and vector embeddings
 - Implement REST API for integration with other applications
 - Create web interface for visualization and management
 - Performance Testing
